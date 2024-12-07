@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Stock Portfolio</title>
+    <style>
+        /* General Styles */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #ecfce6;
+            color: #333;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: auto;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        h1 {
+            color: #05a08e;
+        }
+
+        /* Dark Mode Styles */
+        body.dark-mode {
+            background-color: #1e1e1e;
+            color: #f5f5f5;
+        }
+
+        .container.dark-mode {
+            background-color: #2e2e2e;
+            color: #f5f5f5;
+        }
+
+        table.dark-mode th {
+            background-color: #444;
+        }
+
+        table.dark-mode td {
+            background-color: #333;
+            color: #f5f5f5;
+        }
+
+        .toggle-switch {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .toggle-switch label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .toggle-switch input {
+            display: none;
+        }
+
+        .toggle-switch .slider {
+            width: 40px;
+            height: 20px;
+            background-color: #ccc;
+            border-radius: 20px;
+            position: relative;
+            transition: background-color 0.3s;
+        }
+
+        .toggle-switch input:checked + .slider {
+            background-color: #2a9d8f;
+        }
+
+        .toggle-switch .slider::before {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background-color: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch input:checked + .slider::before {
+            transform: translateX(20px);
+        }
+
+        /* Input Styles */
+        .input-group {
+            margin: 10px 0;
+        }
+
+        .input-group input {
+            padding: 8px;
+            width: 70%;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 14px;
+            display: inline-block;
+        }
+
+        .add-btn {
+            width: 70%;
+            background-color: #2a9d8f;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s;
+        }
+
+        .add-btn:hover {
+            background-color: #247a6b;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #2a9d8f;
+            color: white;
+        }
+
+        .total-container {
+            margin-top: 20px;
+            font-size: 18px;
+            text-align: right;
+            font-weight: bold;
+            color: #2a9d8f;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="container">
+    <h1>My Stock Portfolio</h1>
+
+    <div class="toggle-switch">
+        <label>
+            <span style="margin-right: 10px;">Dark Mode</span>
+            <input type="checkbox" id="darkModeToggle" onchange="toggleDarkMode()">
+            <span class="slider"></span>
+        </label>
+    </div>
+
+    <div class="input-group">
+        <input type="text" id="stockSymbol" placeholder="Enter Stock Symbol (e.g.,GAIL.BO,RPOWER.NS)">
+    </div>
+
+    <div class="input-group">
+        <input type="number" id="stockQuantity" placeholder="Qty">
+    </div>
+
+    <button class="add-btn" onclick="fetchStockPrice()">Get-Stock Price</button>
+
+    <table id="portfolioTable">
+        <thead>
+            <tr>
+                <th>Stock-Symbol</th>
+                <th>Quantity</th>
+                <th>Price per Unit (INR)</th>
+                <th>Total Value (INR)</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="portfolioBody"></tbody>
+    </table>
+
+    <div class="total-container" id="totalValue">Total Value: INR 0.00</div>
+</div>
+
+<script>
+    let portfolio = [];
+
+    async function fetchStockPrice() {
+        const stockSymbol = document.getElementById('stockSymbol').value.trim();
+        if (!stockSymbol) {
+            alert('Please enter a stock symbol.');
+            return;
+        }
+
+        try {
+            const response = await fetch('/get_stock_price', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `symbol=${stockSymbol}`
+            });
+            const data = await response.json();
+
+            if (response.ok) {
+                addStockToPortfolio(stockSymbol, data.price);
+            } else {
+                alert(data.error);
+            }
+        } catch (error) {
+            alert('Error fetching stock price. Please try again.');
+        }
+    }
+
+    function addStockToPortfolio(symbol, price) {
+        const quantity = document.getElementById('stockQuantity').value;
+
+        if (!quantity) {
+            alert('Please enter a quantity.');
+            return;
+        }
+
+        const stock = {
+            symbol: symbol.toUpperCase(),
+            quantity: parseInt(quantity),
+            price: price
+        };
+
+        portfolio.push(stock);
+        renderPortfolio();
+        clearInputs();
+    }
+
+    function deleteStock(index) {
+        portfolio.splice(index, 1);
+        renderPortfolio();
+    }
+
+    function renderPortfolio() {
+        const portfolioBody = document.getElementById('portfolioBody');
+        portfolioBody.innerHTML = '';
+        let totalValue = 0;
+
+        portfolio.forEach((stock, index) => {
+            const stockTotal = stock.quantity * stock.price;
+            totalValue += stockTotal;
+
+            portfolioBody.innerHTML += `
+                <tr>
+                    <td>${stock.symbol}</td>
+                    <td>${stock.quantity}</td>
+                    <td>${stock.price.toFixed(2)}</td>
+                    <td>${stockTotal.toFixed(2)}</td>
+                    <td>
+                        <button onclick="deleteStock(${index})" style="background-color: #e63946; color: white; padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer;">Delete</button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        document.getElementById('totalValue').innerText = `Total Value: INR ${totalValue.toFixed(2)}`;
+    }
+
+    function clearInputs() {
+        document.getElementById('stockSymbol').value = '';
+        document.getElementById('stockQuantity').value = '';
+    }
+
+    function toggleDarkMode() {
+        document.body.classList.toggle('dark-mode');
+        document.getElementById('container').classList.toggle('dark-mode');
+        document.getElementById('portfolioTable').classList.toggle('dark-mode');
+    }
+</script>
+
+</body>
+</html>
